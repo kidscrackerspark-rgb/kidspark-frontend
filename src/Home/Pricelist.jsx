@@ -462,7 +462,7 @@ const Pricelist = () => {
       yOffset += 10
       doc.setFontSize(12)
       doc.setFont("helvetica", "normal")
-      doc.text("Website - www.srimaheswarigroupofcompanies.in", pageWidth / 2, yOffset, { align: "center" })
+      doc.text("Website - kidscrackerspark.vercel.app", pageWidth / 2, yOffset, { align: "center" })
       yOffset += 10
       doc.text("Retail Pricelist - 2025", pageWidth / 2, yOffset, { align: "center" })
       yOffset += 20
