@@ -177,11 +177,9 @@ export default function About() {
             <h2 className="text-2xl font-bold mb-4">Contact Us</h2>
             <p className="text-pink-100">Kids Crackers Park</p>
             <p>
-              Sree Sai Ram Crackers 
+              Sree Sai Ram Crackers
               <br />
-              No.19 kamak road
-              <br />
-              Opposite to Kammavar Mandapam main entrance, 
+              Opposite to Kammavar Mandapam, 
               <br/>
               Sivakasi-626123
             </p>

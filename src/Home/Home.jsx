@@ -562,11 +562,9 @@ export default function Home() {
               <div className="bg-white/10 backdrop-blur-sm p-4 border border-white/10">
                 <p className="font-semibold text-purple-200 mb-2">📍 Address</p>
                 <p>
-                  Sree Sai Ram Crackers 
+                  Sree Sai Ram Crackers
                   <br />
-                  No.19 kamak road
-                  <br />
-                  Opposite to Kammavar Mandapam main entrance, 
+                  Opposite to Kammavar Mandapam, 
                   <br/>
                   Sivakasi-626123
                 </p>

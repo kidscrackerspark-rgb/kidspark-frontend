@@ -117,7 +117,6 @@ const QuotationTable = ({
         <thead className="border">
           <tr className="hundred:text-lg mobile:text-sm">
             <th className="text-center border-r mobile:p-1">Product</th>
-            <th className="text-center border-r mobile:p-1">Type</th>
             <th className="text-center border-r mobile:p-1">Price</th>
             <th className="text-center border-r mobile:p-1">Discount (%)</th>
             <th className="text-center border-r mobile:p-1">Qty</th>
@@ -133,7 +132,6 @@ const QuotationTable = ({
                 className="border border-gray-200 text-gray-900 dark:text-gray-100 mobile:text-sm"
               >
                 <td className="text-center border-r mobile:p-1">{item.productname}</td>
-                <td className="text-center border-r mobile:p-1">{item.product_type}</td>
                 <td className="text-center border-r mobile:p-1">₹{Number.parseFloat(item.price).toFixed(2)}</td>
                 <td className="text-center border-r mobile:p-1">
                   <input
