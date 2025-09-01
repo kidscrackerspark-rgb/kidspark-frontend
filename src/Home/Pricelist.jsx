@@ -1460,84 +1460,94 @@ const Pricelist = () => {
       <aside
         className={`fixed top-0 bottom-0 right-0 w-80 bg-white shadow-lg z-40 transition-transform duration-300 transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}
       >
-        <div className="p-6">
-          <h2 className="text-2xl font-bold mb-4 text-pink-700 drop-shadow-sm">Your Cart</h2>
+        <div className="h-full flex flex-col">
+          <div className="p-6 flex-shrink-0">
+            <h2 className="text-2xl font-bold mb-4 text-pink-700 drop-shadow-sm">Your Cart</h2>
+          </div>
           {Object.keys(cart).length === 0 ? (
-            <p className="text-gray-600">Your cart is empty.</p>
+            <div className="p-6 flex-grow">
+              <p className="text-gray-600">Your cart is empty.</p>
+            </div>
           ) : (
             <>
-              <ul>
-                {Object.entries(cart).map(([serial, qty]) => {
-                  const product = products.find((p) => p.serial_number === serial)
-                  if (!product) return null
-                  const originalPrice = Number.parseFloat(product.price)
-                  const discount = originalPrice * (product.discount / 100)
-                  const finalPrice = originalPrice - discount
-                  return (
-                    <li key={serial} className="py-2 border-b border-gray-200 flex items-center justify-between">
-                      <span className="text-gray-800">{product.productname}</span>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => removeFromCart(product)} className="text-pink-500 hover:text-pink-700">
-                          <FaMinus />
-                        </button>
-                        <span className="text-gray-600">{qty}</span>
-                        <button onClick={() => addToCart(product)} className="text-pink-500 hover:text-pink-700">
-                          <FaPlus />
-                        </button>
+              <div className="flex-grow overflow-y-auto px-6">
+                <ul className="pb-4">
+                  {Object.entries(cart).map(([serial, qty]) => {
+                    const product = products.find((p) => p.serial_number === serial)
+                    if (!product) return null
+                    const originalPrice = Number.parseFloat(product.price)
+                    const discount = originalPrice * (product.discount / 100)
+                    const finalPrice = originalPrice - discount
+                    return (
+                      <li key={serial} className="py-2 border-b border-gray-200 flex items-center justify-between">
+                        <span className="text-gray-800">{product.productname}</span>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => removeFromCart(product)} className="text-pink-500 hover:text-pink-700">
+                            <FaMinus />
+                          </button>
+                          <span className="text-gray-600">{qty}</span>
+                          <button onClick={() => addToCart(product)} className="text-pink-500 hover:text-pink-700">
+                            <FaPlus />
+                          </button>
+                        </div>
+                        <span className="text-gray-600">₹{formatPrice(qty * finalPrice)}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+              <div className="flex-shrink-0 p-6 border-t border-gray-200 bg-gray-50">
+                <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">All States - Minimum Rates</h3>
+                  <div className="max-h-32 overflow-y-auto">
+                    {states.map((state, index) => (
+                      <div
+                        key={index}
+                        className={`flex justify-between items-center py-1 px-2 text-xs rounded ${
+                          customerDetails.state === state.name ? "bg-blue-100 text-blue-800 font-medium" : "text-gray-600"
+                        }`}
+                      >
+                        <span>{state.name}</span>
+                        <span className="font-medium">₹{state.min_rate}</span>
                       </div>
-                      <span className="text-gray-600">₹{formatPrice(qty * finalPrice)}</span>
-                    </li>
-                  )
-                })}
-              </ul>
-              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">All States - Minimum Rates</h3>
-                <div className="max-h-32 overflow-y-auto">
-                  {states.map((state, index) => (
-                    <div
-                      key={index}
-                      className={`flex justify-between items-center py-1 px-2 text-xs rounded ${
-                        customerDetails.state === state.name ? "bg-blue-100 text-blue-800 font-medium" : "text-gray-600"
-                      }`}
-                    >
-                      <span>{state.name}</span>
-                      <span className="font-medium">₹{state.min_rate}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold">Subtotal</span>
+                    <span className="text-gray-900 font-bold">₹{totals.net}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold">Discount</span>
+                    <span className="text-green-600 font-bold">- ₹{totals.save}</span>
+                  </div>
+                  {appliedPromo && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-700 font-semibold">Promocode ({appliedPromo.code})</span>
+                      <span className="text-green-600 font-bold">- ₹{totals.promo_discount}</span>
                     </div>
-                  ))}
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700 font-semibold">Total</span>
+                    <span className="text-gray-900 font-bold">₹{totals.total}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-between items-center mb-4 mt-6">
-                <span className="text-gray-700 font-semibold">Subtotal</span>
-                <span className="text-gray-900 font-bold">₹{totals.net}</span>
-              </div>
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-gray-700 font-semibold">Discount</span>
-                <span className="text-green-600 font-bold">- ₹{totals.save}</span>
-              </div>
-              {appliedPromo && (
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-700 font-semibold">Promocode ({appliedPromo.code})</span>
-                  <span className="text-green-600 font-bold">- ₹{totals.promo_discount}</span>
+                <div className="flex justify-end gap-4 mt-4">
+                  <button
+                    onClick={() => setIsCartOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all duration-300"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={handleCheckoutClick}
+                    className="px-4 py-2 text-sm font-medium text-white transition-all duration-300 cursor-pointer"
+                    style={{ background: styles.button.background, boxShadow: "0 10px 25px rgba(190, 24, 93, 0.3)" }}
+                  >
+                    Checkout
+                  </button>
                 </div>
-              )}
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-gray-700 font-semibold">Total</span>
-                <span className="text-gray-900 font-bold">₹{totals.total}</span>
-              </div>
-              <div className="flex justify-end gap-4">
-                <button
-                  onClick={() => setIsCartOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all duration-300"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={handleCheckoutClick}
-                  className="px-4 py-2 text-sm font-medium text-white transition-all duration-300 cursor-pointer"
-                  style={{ background: styles.button.background, boxShadow: "0 10px 25px rgba(190, 24, 93, 0.3)" }}
-                >
-                  Checkout
-                </button>
               </div>
             </>
           )}
