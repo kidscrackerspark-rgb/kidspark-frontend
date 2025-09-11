@@ -50,8 +50,24 @@ const QuotationTable = ({
   calculateTotal,
   styles,
   isModal = false,
+  changeDiscount,
+  setChangeDiscount,
 }) => (
   <div className="space-y-4">
+    <div className="flex justify-center items-center gap-2 mb-4">
+      <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Change Discount (%)</label>
+      <input
+        type="number"
+        value={changeDiscount}
+        onChange={(e) => setChangeDiscount(e.target.value)}
+        placeholder="Enter discount %"
+        min="0"
+        max="100"
+        step="0.01"
+        className="w-24 p-2 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-900 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+        style={styles.input}
+      />
+    </div>
     <div className="flex flex-col items-center mobile:w-full">
       <label
         htmlFor="product-select"
@@ -138,7 +154,7 @@ const QuotationTable = ({
                     type="number"
                     value={item.discount}
                     onChange={(e) =>
-                      updateDiscount(item.id, item.product_type, Number.parseInt(e.target.value) || 0, isModal)
+                      updateDiscount(item.id, item.product_type, Number.parseFloat(e.target.value) || 0, isModal)
                     }
                     min="0"
                     max="100"
@@ -215,6 +231,8 @@ const FormFields = ({
   handleSubmit,
   closeModal,
   styles,
+  changeDiscount,
+  setChangeDiscount,
 }) => (
   <div className="space-y-6">
     <div className="flex flex-col items-center mobile:w-full">
@@ -255,6 +273,8 @@ const FormFields = ({
         calculateTotal={calculateTotal}
         styles={styles}
         isModal={true}
+        changeDiscount={changeDiscount}
+        setChangeDiscount={setChangeDiscount}
       />
     </QuotationTableErrorBoundary>
     <div className="flex justify-end space-x-3">
@@ -296,6 +316,8 @@ export default function Direct() {
   const [modalSelectedProduct, setModalSelectedProduct] = useState(null)
   const [modalSelectedCustomer, setModalSelectedCustomer] = useState("")
   const [orderId, setOrderId] = useState("")
+  const [changeDiscount, setChangeDiscount] = useState('') // New state for change discount
+  const [modalChangeDiscount, setModalChangeDiscount] = useState('') // New state for modal change discount
 
   const styles = {
     input: {
@@ -349,11 +371,30 @@ export default function Direct() {
     return () => clearInterval(intervalId)
   }, [])
 
+  const applyChangeDiscount = (discountValue, isModal = false) => {
+    const targetCart = isModal ? modalCart : cart
+    const setTargetCart = isModal ? setModalCart : setCart
+    const parsedDiscount = Number.parseFloat(discountValue) || 0
+    if (parsedDiscount < 0 || parsedDiscount > 100) {
+      setError('Change Discount must be between 0 and 100')
+      return
+    }
+    setTargetCart((prev) =>
+      prev.map((item) =>
+        item.product_type !== 'net_rate_products'
+          ? { ...item, discount: parsedDiscount }
+          : item
+      )
+    )
+    setError('')
+  }
+
   const addToCart = (isModal = false) => {
     const targetCart = isModal ? modalCart : cart
     const setTargetCart = isModal ? setModalCart : setCart
     const targetSelectedProduct = isModal ? modalSelectedProduct : selectedProduct
     const setTargetSelectedProduct = isModal ? setModalSelectedProduct : setSelectedProduct
+    const changeDiscountValue = isModal ? modalChangeDiscount : changeDiscount
 
     if (!targetSelectedProduct) {
       setError("Please select a product")
@@ -368,15 +409,19 @@ export default function Direct() {
       return
     }
 
+    const initialDiscount = type !== 'net_rate_products' && changeDiscountValue
+      ? Number.parseFloat(changeDiscountValue) || 0
+      : Number.parseFloat(product.discount) || 0
+
     setTargetCart((prev) => {
       const exists = prev.find((item) => item.id === product.id && item.product_type === product.product_type)
       return exists
         ? prev.map((item) =>
             item.id === product.id && item.product_type === product.product_type
               ? { ...item, quantity: item.quantity + 1 }
-              : item,
+              : item
           )
-        : [...prev, { ...product, quantity: 1, discount: Number.parseFloat(product.discount) || 0 }]
+        : [...prev, { ...product, quantity: 1, discount: initialDiscount }]
     })
     setTargetSelectedProduct(null)
     setError("")
@@ -386,8 +431,8 @@ export default function Direct() {
     const setTargetCart = isModal ? setModalCart : setCart
     setTargetCart((prev) =>
       prev.map((item) =>
-        item.id === id && item.product_type === type ? { ...item, quantity: quantity < 0 ? 0 : quantity } : item,
-      ),
+        item.id === id && item.product_type === type ? { ...item, quantity: quantity < 0 ? 0 : quantity } : item
+      )
     )
   }
 
@@ -397,8 +442,8 @@ export default function Direct() {
       prev.map((item) =>
         item.id === id && item.product_type === type
           ? { ...item, discount: discount < 0 ? 0 : discount > 100 ? 100 : discount }
-          : item,
-      ),
+          : item
+      )
     )
   }
 
@@ -414,7 +459,7 @@ export default function Direct() {
   const calculateTotal = (targetCart = []) => {
     const subtotal = targetCart.reduce(
       (total, item) => total + item.price * (1 - item.discount / 100) * item.quantity,
-      0,
+      0
     )
     return subtotal.toFixed(2)
   }
@@ -490,6 +535,7 @@ export default function Direct() {
       setCart([])
       setSelectedCustomer("")
       setSelectedProduct(null)
+      setChangeDiscount('')
     } catch (err) {
       setError(`Failed to create quotation: ${err.response?.data?.message || err.message}`)
     }
@@ -556,8 +602,8 @@ export default function Direct() {
                 customer_name: customers.find((c) => c.id.toString() === modalSelectedCustomer)?.name || "N/A",
                 total: payload.total,
               }
-            : q,
-        ),
+            : q
+        )
       )
 
       const pdfResponse = await axios.get(`${API_BASE_URL}/api/direct/quotation/${response.data.quotation_id}`, {
@@ -597,12 +643,13 @@ export default function Direct() {
         setSelectedProduct(null)
         setQuotationId(null)
         setIsQuotationCreated(false)
+        setChangeDiscount('')
       }
       setSuccessMessage("Quotation canceled successfully!")
       setShowSuccess(true)
       setTimeout(() => setShowSuccess(false), 3000)
       setQuotations((prev) =>
-        prev.map((q) => (q.quotation_id === targetQuotationId ? { ...q, status: "cancelled" } : q)),
+        prev.map((q) => (q.quotation_id === targetQuotationId ? { ...q, status: "cancelled" } : q))
       )
     } catch (err) {
       console.error("Failed to cancel quotation:", err.response?.data || err.message)
@@ -626,7 +673,7 @@ export default function Direct() {
                 discount: Number.parseFloat(p.discount) || 0,
                 quantity: Number.parseInt(p.quantity) || 0,
               }))
-            : [],
+            : []
         )
       } catch (e) {
         setModalCart([])
@@ -762,6 +809,7 @@ export default function Direct() {
       setSelectedProduct(null)
       setQuotationId(null)
       setIsQuotationCreated(false)
+      setChangeDiscount('')
     } catch (err) {
       setError(`Failed to create booking: ${err.response?.data?.message || err.message}`)
     }
@@ -799,6 +847,7 @@ export default function Direct() {
     setOrderId("")
     setError("")
     setSuccessMessage("")
+    setModalChangeDiscount('')
   }
 
   return (
@@ -844,6 +893,11 @@ export default function Direct() {
                 calculateYouSave={calculateYouSave}
                 calculateTotal={calculateTotal}
                 styles={styles}
+                changeDiscount={changeDiscount}
+                setChangeDiscount={(value) => {
+                  setChangeDiscount(value)
+                  applyChangeDiscount(value, false)
+                }}
               />
             </QuotationTableErrorBoundary>
           </div>
@@ -970,6 +1024,11 @@ export default function Direct() {
                 handleSubmit={modalMode === "edit" ? () => editQuotation() : () => convertToBooking()}
                 closeModal={closeModal}
                 styles={styles}
+                changeDiscount={modalChangeDiscount}
+                setChangeDiscount={(value) => {
+                  setModalChangeDiscount(value)
+                  applyChangeDiscount(value, true)
+                }}
               />
             </div>
           </Modal>
