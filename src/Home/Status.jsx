@@ -1,21 +1,6 @@
-"use client"
-
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  Search,
-  Package,
-  Truck,
-  CheckCircle,
-  Clock,
-  MapPin,
-  Phone,
-  User,
-  Calendar,
-  Download,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react"
+import {Search,Package,Truck,CheckCircle,Clock,MapPin,Phone,User,Calendar,Download,ChevronDown,ChevronUp,} from "lucide-react"
 import Navbar from "../Component/Navbar"
 import { API_BASE_URL } from "../../Config"
 
