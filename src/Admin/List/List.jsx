@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Modal from "react-modal"
 import Sidebar from "../Sidebar/Sidebar"
 import "../../App.css"
@@ -43,6 +43,10 @@ export default function List() {
     existingImages: [],
     imagesToDelete: [],
   })
+
+  // Track previous filterType and searchQuery to detect changes
+  const prevFilterType = useRef(filterType)
+  const prevSearchQuery = useRef(searchQuery)
 
   const productsPerPage = 9
 
@@ -92,7 +96,7 @@ export default function List() {
         }))
         .sort((a, b) => a.serial_number.localeCompare(b.serial_number))
       setProducts(normalizedData)
-      applyFilters(normalizedData, filterType, searchQuery)
+      applyFilters(normalizedData, filterType, searchQuery, true) // Preserve current page
       setToggleStates(
         normalizedData.reduce(
           (acc, p) => ({
@@ -105,7 +109,7 @@ export default function List() {
       )
     })
 
-  const applyFilters = (productsData, type, query) => {
+  const applyFilters = (productsData, type, query, preservePage = false) => {
     let filtered = productsData
     if (type !== "all") {
       filtered = filtered.filter((p) => p.product_type === type)
@@ -117,7 +121,15 @@ export default function List() {
       )
     }
     setFilteredProducts(filtered)
-    setCurrentPage(1)
+    if (!preservePage) {
+      setCurrentPage(1)
+    } else {
+      // Adjust currentPage if filtered products are fewer than the current page's capacity
+      const totalPages = Math.ceil(filtered.length / productsPerPage)
+      if (currentPage > totalPages && totalPages > 0) {
+        setCurrentPage(totalPages)
+      }
+    }
   }
 
   const applyRateChangeFilter = () => {
@@ -158,7 +170,12 @@ export default function List() {
   }, [])
 
   useEffect(() => {
-    applyFilters(products, filterType, searchQuery)
+    // Only reset page if filterType or searchQuery changed
+    const shouldResetPage = filterType !== prevFilterType.current || searchQuery !== prevSearchQuery.current
+    applyFilters(products, filterType, searchQuery, !shouldResetPage)
+    // Update refs
+    prevFilterType.current = filterType
+    prevSearchQuery.current = searchQuery
   }, [filterType, searchQuery, products])
 
   const handleImageChange = (e) => {
@@ -272,7 +289,7 @@ export default function List() {
       const result = await response.json()
       if (!response.ok) throw new Error(result.message || `Failed to ${isEdit ? "update" : "add"} product`)
 
-      fetchProducts()
+      fetchProducts() // This will preserve the current page
       closeModal()
       e.target.reset()
       setFormData({
@@ -1051,7 +1068,7 @@ export default function List() {
                   backgroundDark: styles.button.backgroundDark,
                   border: styles.button.border,
                   borderDark: styles.button.borderDark,
-                  boxShadow: styles.button.boxShot,
+                  boxShadow: styles.button.boxShadow,
                   boxShadowDark: styles.button.boxShadowDark,
                 }}
               >
