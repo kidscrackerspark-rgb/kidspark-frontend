@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 import Modal from 'react-modal';
-import * as XLSX from 'xlsx'; // Import xlsx for Excel export
+import * as XLSX from 'xlsx';
 import '../../App.css';
 import { API_BASE_URL } from '../../../Config';
 import Sidebar from '../Sidebar/Sidebar';
 import Logout from '../Logout';
-import { FaEdit, FaArrowRight, FaTrash, FaArrowLeft } from 'react-icons/fa';
+import { FaArrowRight, FaArrowLeft } from 'react-icons/fa';
 
 // Set app element for accessibility
 Modal.setAppElement("#root");
@@ -48,26 +48,47 @@ const QuotationTable = ({
   removeFromCart,
   calculateNetRate,
   calculateYouSave,
+  calculateAdditionalDiscountAmount,
   calculateTotal,
   styles,
   isModal = false,
   changeDiscount,
   setChangeDiscount,
+  additionalDiscount,
+  setAdditionalDiscount,
+  productSelectRef,
+  quantityRefs,
 }) => (
   <div className="space-y-4">
-    <div className="flex justify-center items-center gap-2 mb-4">
-      <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Change Discount (%)</label>
-      <input
-        type="number"
-        value={changeDiscount}
-        onChange={(e) => setChangeDiscount(e.target.value)}
-        placeholder="Enter discount %"
-        min="0"
-        max="100"
-        step="0.01"
-        className="w-24 p-2 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-900 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
-        style={styles.input}
-      />
+    <div className="flex justify-center items-center gap-4 mb-4">
+      <div className="flex flex-col items-center">
+        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Change Discount (%)</label>
+        <input
+          type="number"
+          value={changeDiscount}
+          onChange={(e) => setChangeDiscount(e.target.value)}
+          placeholder="Enter discount %"
+          min="0"
+          max="100"
+          step="0.01"
+          className="w-24 p-2 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-900 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+          style={styles.input}
+        />
+      </div>
+      <div className="flex flex-col items-center">
+        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Additional Discount (%)</label>
+        <input
+          type="number"
+          value={additionalDiscount}
+          onChange={(e) => setAdditionalDiscount(e.target.value)}
+          placeholder="Enter additional discount %"
+          min="0"
+          max="100"
+          step="0.01"
+          className="w-24 p-2 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-900 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+          style={styles.input}
+        />
+      </div>
     </div>
     <div className="flex flex-col items-center mobile:w-full">
       <label
@@ -78,6 +99,7 @@ const QuotationTable = ({
       </label>
       <Select
         id="product-select"
+        ref={productSelectRef}
         value={selectedProduct}
         onChange={setSelectedProduct}
         options={products.map((p) => ({
@@ -145,7 +167,7 @@ const QuotationTable = ({
         </thead>
         <tbody>
           {cart.length ? (
-            cart.map((item) => (
+            cart.map((item, index) => (
               <tr
                 key={`${item.id}-${item.product_type}`}
                 className="border border-gray-200 text-gray-900 dark:text-gray-100 mobile:text-sm"
@@ -167,10 +189,17 @@ const QuotationTable = ({
                 <td className="text-center border-r mobile:p-1">
                   <input
                     type="number"
+                    ref={(el) => (quantityRefs.current[index] = el)}
                     value={item.quantity}
                     onChange={(e) =>
                       updateQuantity(item.id, item.product_type, Number.parseInt(e.target.value) || 0, isModal)
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Tab') {
+                        e.preventDefault();
+                        productSelectRef.current.focus();
+                      }
+                    }}
                     min="0"
                     className="w-16 text-center border border-gray-300 rounded p-1 focus:outline-none focus:ring-2 focus:ring-blue-600"
                   />
@@ -190,7 +219,7 @@ const QuotationTable = ({
             ))
           ) : (
             <tr>
-              <td colSpan="7" className="p-4 text-center text-gray-500 dark:text-gray-100 mobile:p-2 mobile:text-xs">
+              <td colSpan="6" className="p-4 text-center text-gray-500 dark:text-gray-100 mobile:p-2 mobile:text-xs">
                 Cart is empty
               </td>
             </tr>
@@ -204,6 +233,9 @@ const QuotationTable = ({
           </div>
           <div className="text-xl text-center mt-2 font-bold text-gray-900 dark:text-gray-100 mobile:text-base mobile:mt-1">
             You Save: ₹{calculateYouSave(cart)}
+          </div>
+          <div className="text-xl text-center mt-2 font-bold text-gray-900 dark:text-gray-100 mobile:text-base mobile:mt-1">
+            Additional Discount Amount: ₹{calculateAdditionalDiscountAmount(cart)}
           </div>
           <div className="text-xl text-center mt-2 font-bold text-gray-900 dark:text-gray-100 mobile:text-base mobile:mt-1">
             Total: ₹{calculateTotal(cart)}
@@ -230,12 +262,17 @@ const FormFields = ({
   removeFromCart,
   calculateNetRate,
   calculateYouSave,
+  calculateAdditionalDiscountAmount,
   calculateTotal,
   handleSubmit,
   closeModal,
   styles,
   changeDiscount,
   setChangeDiscount,
+  additionalDiscount,
+  setAdditionalDiscount,
+  productSelectRef,
+  quantityRefs,
 }) => (
   <div className="space-y-6">
     <div className="flex flex-col items-center mobile:w-full">
@@ -255,7 +292,7 @@ const FormFields = ({
         <option value="">Select a customer</option>
         {customers.map((c) => (
           <option key={c.id} value={c.id}>
-            {c.name} (
+            {c.name} ({c.district || 'N/A'}) - (
             {c.customer_type === "Customer of Selected Agent" ? "Customer - Agent" : c.customer_type || "User"})
           </option>
         ))}
@@ -273,11 +310,16 @@ const FormFields = ({
         removeFromCart={removeFromCart}
         calculateNetRate={calculateNetRate}
         calculateYouSave={calculateYouSave}
+        calculateAdditionalDiscountAmount={calculateAdditionalDiscountAmount}
         calculateTotal={calculateTotal}
         styles={styles}
         isModal={true}
         changeDiscount={changeDiscount}
         setChangeDiscount={setChangeDiscount}
+        additionalDiscount={additionalDiscount}
+        setAdditionalDiscount={setAdditionalDiscount}
+        productSelectRef={productSelectRef}
+        quantityRefs={quantityRefs}
       />
     </QuotationTableErrorBoundary>
     <div className="flex justify-end space-x-3">
@@ -310,7 +352,7 @@ export default function Direct() {
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [quotations, setQuotations] = useState([]);
-  const [filteredQuotations, setFilteredQuotations] = useState([]); // New state for filtered quotations
+  const [filteredQuotations, setFilteredQuotations] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [cart, setCart] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -328,9 +370,16 @@ export default function Direct() {
   const [orderId, setOrderId] = useState("");
   const [changeDiscount, setChangeDiscount] = useState('');
   const [modalChangeDiscount, setModalChangeDiscount] = useState('');
-  const [searchQuery, setSearchQuery] = useState(""); // New state for search query
-  const [currentPage, setCurrentPage] = useState(1); // New state for pagination
-  const quotationsPerPage = 9; // Number of quotations per page
+  const [additionalDiscount, setAdditionalDiscount] = useState('');
+  const [modalAdditionalDiscount, setModalAdditionalDiscount] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const quotationsPerPage = 9;
+
+  const productSelectRef = useRef(null);
+  const modalProductSelectRef = useRef(null);
+  const quantityRefs = useRef([]);
+  const modalQuantityRefs = useRef([]);
 
   const styles = {
     input: {
@@ -356,7 +405,7 @@ export default function Direct() {
       const quotationsResponse = await axios.get(`${API_BASE_URL}/api/direct/quotations`);
       const fetchedQuotations = Array.isArray(quotationsResponse.data) ? quotationsResponse.data : [];
       setQuotations(fetchedQuotations);
-      applyFilters(fetchedQuotations, searchQuery, false); // Apply filters without resetting page
+      applyFilters(fetchedQuotations, searchQuery, false);
     } catch (err) {
       console.error("Failed to fetch quotations:", err.message);
       setError(`Failed to fetch quotations: ${err.message}`);
@@ -372,11 +421,12 @@ export default function Direct() {
           axios.get(`${API_BASE_URL}/api/direct/aproducts`),
           axios.get(`${API_BASE_URL}/api/direct/quotations`),
         ]);
-        setCustomers(Array.isArray(customersResponse.data) ? customersResponse.data : []);
+        const sortedCustomers = Array.isArray(customersResponse.data) ? customersResponse.data.sort((a, b) => b.id - a.id) : [];
+        setCustomers(sortedCustomers);
         setProducts(Array.isArray(productsResponse.data) ? productsResponse.data : []);
         const fetchedQuotations = Array.isArray(quotationsResponse.data) ? quotationsResponse.data : [];
         setQuotations(fetchedQuotations);
-        applyFilters(fetchedQuotations, searchQuery, true); // Initial filter with page reset
+        applyFilters(fetchedQuotations, searchQuery, true);
       } catch (err) {
         setError(`Failed to fetch data: ${err.message}`);
       } finally {
@@ -388,7 +438,6 @@ export default function Direct() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Apply filters for search query
   const applyFilters = (quotationsData, query, resetPage = true) => {
     let filtered = quotationsData;
     if (query) {
@@ -403,7 +452,6 @@ export default function Direct() {
     if (resetPage) {
       setCurrentPage(1);
     } else {
-      // Adjust currentPage if it exceeds the new totalPages
       const totalPages = Math.ceil(filtered.length / quotationsPerPage);
       if (currentPage > totalPages && totalPages > 0) {
         setCurrentPage(totalPages);
@@ -411,12 +459,10 @@ export default function Direct() {
     }
   };
 
-  // Update filtered quotations when searchQuery changes
   useEffect(() => {
     applyFilters(quotations, searchQuery, true);
   }, [searchQuery]);
 
-  // Update filtered quotations when quotations change (e.g., after edit or cancel)
   useEffect(() => {
     applyFilters(quotations, searchQuery, false);
   }, [quotations]);
@@ -445,6 +491,8 @@ export default function Direct() {
     const targetSelectedProduct = isModal ? modalSelectedProduct : selectedProduct;
     const setTargetSelectedProduct = isModal ? setModalSelectedProduct : setSelectedProduct;
     const changeDiscountValue = isModal ? modalChangeDiscount : changeDiscount;
+    const targetProductSelectRef = isModal ? modalProductSelectRef : productSelectRef;
+    const targetQuantityRefs = isModal ? modalQuantityRefs : quantityRefs;
 
     if (!targetSelectedProduct) {
       setError("Please select a product");
@@ -464,14 +512,24 @@ export default function Direct() {
       : Number.parseFloat(product.discount) || 0;
 
     setTargetCart((prev) => {
-      const exists = prev.find((item) => item.id === product.id && item.product_type === product.product_type);
-      return exists
-        ? prev.map((item) =>
-            item.id === product.id && item.product_type === product.product_type
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          )
-        : [...prev, { ...product, quantity: 1, discount: initialDiscount }]
+      const existsIndex = prev.findIndex((item) => item.id === product.id && item.product_type === product.product_type);
+      let newCart;
+      if (existsIndex !== -1) {
+        newCart = prev.map((item, idx) =>
+          idx === existsIndex
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        newCart = [...prev, { ...product, quantity: 1, discount: initialDiscount }];
+      }
+      setTimeout(() => {
+        const lastIndex = newCart.length - 1;
+        if (targetQuantityRefs.current[lastIndex]) {
+          targetQuantityRefs.current[lastIndex].focus();
+        }
+      }, 0);
+      return newCart;
     });
     setTargetSelectedProduct(null);
     setError("");
@@ -504,14 +562,27 @@ export default function Direct() {
 
   const calculateNetRate = (targetCart = []) =>
     targetCart.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2);
+
   const calculateYouSave = (targetCart = []) =>
-    targetCart.reduce((total, item) => total + item.price * (item.discount / 100) * item.quantity, 0).toFixed(2);
-  const calculateTotal = (targetCart = []) => {
-    const subtotal = targetCart.reduce(
-      (total, item) => total + item.price * (1 - item.discount / 100) * item.quantity,
-      0
-    );
-    return subtotal.toFixed(2);
+    targetCart.reduce((total, item) => 
+      total + item.price * (item.discount / 100) * item.quantity, 0
+    ).toFixed(2);
+
+  const calculateSubtotal = (targetCart = []) =>
+    targetCart.reduce((total, item) => 
+      total + item.price * (1 - item.discount / 100) * item.quantity, 0
+    ).toFixed(2);
+
+  const calculateAdditionalDiscountAmount = (targetCart = [], additionalDiscount = 0) => {
+    const subtotal = parseFloat(calculateSubtotal(targetCart));
+    const parsedAdditionalDiscount = Number.parseFloat(additionalDiscount) || 0;
+    return (subtotal * (parsedAdditionalDiscount / 100)).toFixed(2);
+  };
+
+  const calculateTotal = (targetCart = [], additionalDiscount = 0) => {
+    const subtotal = parseFloat(calculateSubtotal(targetCart));
+    const additionalAmount = parseFloat(calculateAdditionalDiscountAmount(targetCart, additionalDiscount));
+    return (subtotal - additionalAmount).toFixed(2);
   };
 
   const createQuotation = async () => {
@@ -523,7 +594,6 @@ export default function Direct() {
 
     const quotation_id = `QUO-${Date.now()}`;
     try {
-      const subtotal = Number.parseFloat(calculateNetRate(cart)) - Number.parseFloat(calculateYouSave(cart));
       const payload = {
         customer_id: Number(selectedCustomer),
         quotation_id,
@@ -534,11 +604,13 @@ export default function Direct() {
           price: Number.parseFloat(item.price) || 0,
           discount: Number.parseFloat(item.discount) || 0,
           quantity: Number.parseInt(item.quantity) || 0,
+          additional_discount: Number.parseFloat(additionalDiscount) || 0, // Ensure consistent for all products
         })),
         net_rate: Number.parseFloat(calculateNetRate(cart)),
         you_save: Number.parseFloat(calculateYouSave(cart)),
-        total: Number.parseFloat(calculateTotal(cart)),
+        total: Number.parseFloat(calculateTotal(cart, additionalDiscount)),
         promo_discount: 0,
+        additional_discount: Number.parseFloat(additionalDiscount) || 0, // Ensure included
         customer_type: customer.customer_type || "User",
         customer_name: customer.name,
         address: customer.address,
@@ -562,6 +634,7 @@ export default function Direct() {
           created_at: new Date().toISOString(),
           customer_name: customer.name || "N/A",
           total: payload.total,
+          additional_discount: payload.additional_discount, // Ensure included
         },
         ...prev,
       ]);
@@ -586,6 +659,7 @@ export default function Direct() {
       setSelectedCustomer("");
       setSelectedProduct(null);
       setChangeDiscount('');
+      setAdditionalDiscount('');
     } catch (err) {
       setError(`Failed to create quotation: ${err.response?.data?.message || err.message}`);
     }
@@ -598,16 +672,21 @@ export default function Direct() {
       setQuotationId(quotation.quotation_id);
       try {
         const products = typeof quotation.products === "string" ? JSON.parse(quotation.products) : quotation.products;
+        console.log("Quotation products:", products);
         setModalCart(
           Array.isArray(products)
             ? products.map((p) => ({
-                ...p,
+                id: p.id,
+                product_type: p.product_type,
+                productname: p.productname,
                 price: Number.parseFloat(p.price) || 0,
                 discount: Number.parseFloat(p.discount) || 0,
-                quantity: Number.parseInt(p.quantity) || 0,
+                quantity: Number.parseInt(p.quantity) || 1,
+                additional_discount: Number.parseFloat(p.additional_discount) || 0,
               }))
             : []
         );
+        setModalAdditionalDiscount(quotation.additional_discount?.toString() || '');
       } catch (e) {
         setModalCart([]);
         setError("Failed to parse quotation products");
@@ -617,10 +696,20 @@ export default function Direct() {
     }
 
     if (!modalSelectedCustomer || !modalCart.length) return setError("Customer and products are required");
-    if (modalCart.some((item) => item.quantity === 0)) return setError("Please remove products with zero quantity");
+    if (modalCart.some((item) => item.quantity < 1)) return setError("Product quantities must be at least 1");
+
+    const isValidCart = modalCart.every(
+      (item) =>
+        item.id &&
+        item.product_type &&
+        item.productname &&
+        !isNaN(Number.parseFloat(item.price)) &&
+        !isNaN(Number.parseFloat(item.discount)) &&
+        Number.parseInt(item.quantity) >= 1
+    );
+    if (!isValidCart) return setError("Invalid product data in cart");
 
     try {
-      const subtotal = Number.parseFloat(calculateNetRate(modalCart)) - Number.parseFloat(calculateYouSave(modalCart));
       const payload = {
         customer_id: Number(modalSelectedCustomer),
         products: modalCart.map((item) => ({
@@ -630,14 +719,17 @@ export default function Direct() {
           price: Number.parseFloat(item.price) || 0,
           discount: Number.parseFloat(item.discount) || 0,
           quantity: Number.parseInt(item.quantity) || 0,
+          additional_discount: Number.parseFloat(modalAdditionalDiscount) || 0,
         })),
         net_rate: Number.parseFloat(calculateNetRate(modalCart)),
         you_save: Number.parseFloat(calculateYouSave(modalCart)),
-        total: Number.parseFloat(calculateTotal(modalCart)),
+        total: Number.parseFloat(calculateTotal(modalCart, modalAdditionalDiscount)),
         promo_discount: 0,
+        additional_discount: Number.parseFloat(modalAdditionalDiscount) || 0,
         status: "pending",
       };
 
+      console.log("Payload sent to /api/direct/quotations:", JSON.stringify(payload, null, 2));
       const response = await axios.put(`${API_BASE_URL}/api/direct/quotations/${quotationId}`, payload);
       setSuccessMessage("Quotation updated successfully! Check downloads for PDF.");
       setShowSuccess(true);
@@ -674,35 +766,9 @@ export default function Direct() {
       window.URL.revokeObjectURL(url);
       closeModal();
     } catch (err) {
-      setError(`Failed to update quotation: ${err.response?.data?.message || err.message}`);
-    }
-  };
-
-  const cancelQuotation = async (quotationIdToCancel = null) => {
-    const targetQuotationId = quotationIdToCancel || quotationId;
-    if (!targetQuotationId) {
-      setError("No quotation to cancel");
-      return;
-    }
-    try {
-      await axios.put(`${API_BASE_URL}/api/direct/quotations/cancel/${targetQuotationId}`);
-      if (!quotationIdToCancel) {
-        setCart([]);
-        setSelectedCustomer("");
-        setSelectedProduct(null);
-        setQuotationId(null);
-        setIsQuotationCreated(false);
-        setChangeDiscount('');
-      }
-      setSuccessMessage("Quotation canceled successfully!");
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
-      setQuotations((prev) =>
-        prev.map((q) => (q.quotation_id === targetQuotationId ? { ...q, status: "cancelled" } : q))
-      );
-    } catch (err) {
-      console.error("Failed to cancel quotation:", err.response?.data || err.message);
-      setError(`Failed to cancel quotation: ${err.response?.data?.message || err.message}`);
+      const errorMessage = err.response?.data?.message || err.message;
+      console.error("Quotation update error:", errorMessage, err.response?.data);
+      setError(`Failed to update quotation: ${errorMessage}`);
     }
   };
 
@@ -717,13 +783,17 @@ export default function Direct() {
         setModalCart(
           Array.isArray(products)
             ? products.map((p) => ({
-                ...p,
+                id: p.id,
+                product_type: p.product_type,
+                productname: p.productname,
                 price: Number.parseFloat(p.price) || 0,
                 discount: Number.parseFloat(p.discount) || 0,
-                quantity: Number.parseInt(p.quantity) || 0,
+                quantity: Number.parseInt(p.quantity) || 1,
+                additional_discount: Number.parseFloat(p.additional_discount) || 0, // Carry over
               }))
             : []
         );
+        setModalAdditionalDiscount(quotation.additional_discount?.toString() || '0'); // Set from quotation
       } catch (e) {
         setModalCart([]);
         setError("Failed to parse quotation products");
@@ -740,7 +810,6 @@ export default function Direct() {
     if (!customer) return setError("Invalid customer");
 
     try {
-      const subtotal = Number.parseFloat(calculateNetRate(modalCart)) - Number.parseFloat(calculateYouSave(modalCart));
       const payload = {
         customer_id: Number(modalSelectedCustomer),
         order_id: orderId,
@@ -752,11 +821,13 @@ export default function Direct() {
           price: Number.parseFloat(item.price) || 0,
           discount: Number.parseFloat(item.discount) || 0,
           quantity: Number.parseInt(item.quantity) || 0,
+          additional_discount: Number.parseFloat(modalAdditionalDiscount) || 0, // Use modalAdditionalDiscount
         })),
         net_rate: Number.parseFloat(calculateNetRate(modalCart)),
         you_save: Number.parseFloat(calculateYouSave(modalCart)),
-        total: Number.parseFloat(calculateTotal(modalCart)),
+        total: Number.parseFloat(calculateTotal(modalCart, modalAdditionalDiscount)),
         promo_discount: 0,
+        additional_discount: Number.parseFloat(modalAdditionalDiscount) || 0, // Ensure included
         customer_type: customer.customer_type || "User",
         customer_name: customer.name,
         address: customer.address,
@@ -788,6 +859,7 @@ export default function Direct() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
       closeModal();
     } catch (err) {
       setError(`Failed to create booking: ${err.response?.data?.message || err.message}`);
@@ -804,7 +876,6 @@ export default function Direct() {
 
     const order_id = `ORD-${Date.now()}`;
     try {
-      const subtotal = Number.parseFloat(calculateNetRate(cart)) - Number.parseFloat(calculateYouSave(cart));
       const payload = {
         customer_id: Number(selectedCustomer),
         order_id,
@@ -816,11 +887,13 @@ export default function Direct() {
           price: Number.parseFloat(item.price) || 0,
           discount: Number.parseFloat(item.discount) || 0,
           quantity: Number.parseInt(item.quantity) || 0,
+          additional_discount: Number.parseFloat(p.additional_discount) || 0,
         })),
         net_rate: Number.parseFloat(calculateNetRate(cart)),
         you_save: Number.parseFloat(calculateYouSave(cart)),
-        total: Number.parseFloat(calculateTotal(cart)),
+        total: Number.parseFloat(calculateTotal(cart, additionalDiscount)),
         promo_discount: 0,
+        additional_discount: Number.parseFloat(additionalDiscount) || 0,
         customer_type: customer.customer_type || "User",
         customer_name: customer.name,
         address: customer.address,
@@ -859,33 +932,57 @@ export default function Direct() {
       setQuotationId(null);
       setIsQuotationCreated(false);
       setChangeDiscount('');
+      setAdditionalDiscount('');
     } catch (err) {
       setError(`Failed to create booking: ${err.response?.data?.message || err.message}`);
     }
   };
 
-  // Function to download customers as Excel
   const downloadCustomersExcel = () => {
+  try {
     if (!customers.length) {
       setError("No customers available to export");
       return;
     }
-    const data = customers.map((customer) => ({
-      ID: customer.id,
-      Name: customer.name || "N/A",
-      CustomerType: customer.customer_type || "User",
-      MobileNumber: customer.mobile_number || "N/A",
-      Email: customer.email || "N/A",
-      Address: customer.address || "N/A",
-      District: customer.district || "N/A",
-      State: customer.state || "N/A",
-    }));
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
-    XLSX.writeFile(workbook, "customers_export.xlsx");
+
+    const customerGroups = {
+      Customer: customers.filter(c => c.customer_type === 'Customer'),
+      Agent: customers.filter(c => c.customer_type === 'Agent'),
+      'Customer of Agent': customers.filter(c => c.customer_type === 'Customer of Selected Agent'),
+    };
+
+    for (const [type, group] of Object.entries(customerGroups)) {
+      if (group.length === 0) continue;
+
+      const data = group.map(customer => ({
+        ID: customer.id || 'N/A',
+        Name: customer.name || 'N/A',
+        'Customer Type': customer.customer_type || 'User',
+        ...(type === 'Customer of Agent' ? { 'Agent Name': customer.agent_name || 'N/A' } : {}),
+        'Mobile Number': customer.mobile_number || 'N/A',
+        Email: customer.email || 'N/A',
+        Address: customer.address || 'N/A',
+        District: customer.district || 'N/A',
+        State: customer.state || 'N/A',
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      XLSX.utils.book_append_sheet(workbook, worksheet, type);
+    }
+
+    if (Object.values(customerGroups).every(group => group.length === 0)) {
+      setError("No valid customer data to export");
+      return;
+    }
+
+    XLSX.writeFile(workbook, 'customers_export.xlsx');
     setError("");
+  } catch (err) {
+    console.error('Failed to download customers Excel:', err);
+    setError(`Failed to download customers Excel: ${err.message}`);
+  }
   };
 
   const renderSelect = (value, onChange, options, label, placeholder, id) => (
@@ -903,7 +1000,7 @@ export default function Direct() {
         <option value="">{placeholder}</option>
         {options.map((c) => (
           <option key={c.id} value={c.id}>
-            {c.name} (
+            {c.name} ({c.district || 'N/A'}) - (
             {c.customer_type === "Customer of Selected Agent" ? "Customer - Agent" : c.customer_type || "User"})
           </option>
         ))}
@@ -921,9 +1018,9 @@ export default function Direct() {
     setError("");
     setSuccessMessage("");
     setModalChangeDiscount('');
+    setModalAdditionalDiscount('');
   };
 
-  // Pagination calculations
   const indexOfLastQuotation = currentPage * quotationsPerPage;
   const indexOfFirstQuotation = indexOfLastQuotation - quotationsPerPage;
   const currentQuotations = filteredQuotations.slice(indexOfFirstQuotation, indexOfLastQuotation);
@@ -970,13 +1067,18 @@ export default function Direct() {
                 removeFromCart={removeFromCart}
                 calculateNetRate={calculateNetRate}
                 calculateYouSave={calculateYouSave}
-                calculateTotal={calculateTotal}
+                calculateAdditionalDiscountAmount={(cart) => calculateAdditionalDiscountAmount(cart, additionalDiscount)}
+                calculateTotal={(cart) => calculateTotal(cart, additionalDiscount)}
                 styles={styles}
                 changeDiscount={changeDiscount}
                 setChangeDiscount={(value) => {
                   setChangeDiscount(value);
                   applyChangeDiscount(value, false);
                 }}
+                additionalDiscount={additionalDiscount}
+                setAdditionalDiscount={setAdditionalDiscount}
+                productSelectRef={productSelectRef}
+                quantityRefs={quantityRefs}
               />
             </QuotationTableErrorBoundary>
           </div>
@@ -1197,7 +1299,8 @@ export default function Direct() {
                 removeFromCart={removeFromCart}
                 calculateNetRate={calculateNetRate}
                 calculateYouSave={calculateYouSave}
-                calculateTotal={calculateTotal}
+                calculateAdditionalDiscountAmount={(cart) => calculateAdditionalDiscountAmount(cart, modalAdditionalDiscount)}
+                calculateTotal={(cart) => calculateTotal(cart, modalAdditionalDiscount)}
                 handleSubmit={modalMode === "edit" ? () => editQuotation() : () => convertToBooking()}
                 closeModal={closeModal}
                 styles={styles}
@@ -1206,6 +1309,10 @@ export default function Direct() {
                   setModalChangeDiscount(value);
                   applyChangeDiscount(value, true);
                 }}
+                additionalDiscount={modalAdditionalDiscount}
+                setAdditionalDiscount={setModalAdditionalDiscount}
+                productSelectRef={modalProductSelectRef}
+                quantityRefs={modalQuantityRefs}
               />
             </div>
           </Modal>
