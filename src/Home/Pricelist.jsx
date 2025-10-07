@@ -250,7 +250,7 @@ const Carousel = ({ media, onImageClick }) => {
   }
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev === mediaItems.length - 1 ? 0 : prev + 1))
+    setCurrentIndex((prev) => ( prev === mediaItems.length - 1 ? 0 : prev + 1))
   }
 
   const handleTouchStart = (e) => {
@@ -684,16 +684,36 @@ const Pricelist = () => {
       return {
         id: product.id,
         product_type: product.product_type,
-        quantity: qty,
+        quantity: Number(qty),
         per: product.per,
         image: product.image,
-        price: product.price,
-        discount: product.discount,
+        price: Number.parseFloat(product.price) || 0,
+        discount: Number.parseFloat(product.discount) || 0,
         serial_number: product.serial_number,
         productname: product.productname,
         status: product.status,
+        additional_discount: 0 // Added to fix "Invalid product entry" error
       }
     })
+
+    // Log the payload for debugging
+    console.log('Booking payload:', {
+      order_id,
+      products: selectedProducts,
+      net_rate: Number.parseFloat(totals.net),
+      you_save: Number.parseFloat(totals.save),
+      total: Number.parseFloat(totals.total),
+      promo_discount: Number.parseFloat(totals.promo_discount || "0.00"),
+      customer_type: customerDetails.customer_type,
+      customer_name: customerDetails.customer_name,
+      address: customerDetails.address,
+      mobile_number: customerDetails.mobile_number.replace(/\D/g, "").slice(-10),
+      email: customerDetails.email,
+      district: customerDetails.district,
+      state: customerDetails.state,
+      promocode: appliedPromo?.code || null
+    })
+
     if (!selectedProducts.length) {
       setIsBooking(false)
       return showError("Your cart is empty.")
@@ -713,10 +733,6 @@ const Pricelist = () => {
     if (!customerDetails.state.trim()) {
       setIsBooking(false)
       return showError("Please select a state.")
-    }
-    if (!customerDetails.mobile_number.trim()) {
-      setIsBooking(false)
-      return showError("Mobile number is required.")
     }
     const mobile = customerDetails.mobile_number.replace(/\D/g, "").slice(-10)
     if (mobile.length !== 10) {
